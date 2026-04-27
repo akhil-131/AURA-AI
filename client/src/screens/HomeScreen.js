@@ -18,6 +18,9 @@ export default function HomeScreen() {
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState([]);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  
+  // 🌟 NEW: Loading state to prevent button spam and white screen crashes
+  const [isLoading, setIsLoading] = useState(false);
 
   const scrollViewRef = useRef();
   const isStreaming = useRef(false);
@@ -49,7 +52,6 @@ export default function HomeScreen() {
             const data = await res.json();
             const formattedMessages = data.map(msg => ({
               id: msg.id.toString(),
-              // 🌟 FIXED: Forces a blank string instead of null
               text: msg.content || "*(Message failed to load)*", 
               isAi: msg.role === 'assistant'
             }));
@@ -100,13 +102,16 @@ export default function HomeScreen() {
     const userText = inputText.trim(); 
     let currentChatId = activeChatId;
     
+    // 🌟 Lock the button immediately
     isStreaming.current = true;
+    setIsLoading(true);
 
     // --- 1. AUTO-CREATE CHAT IF NONE EXISTS ---
     if (!currentChatId) {
       if (!userData) {
         Toast.show({ type: 'error', text1: 'Please Log In to use AURA AI.' });
         isStreaming.current = false; 
+        setIsLoading(false); // 🛑 UNLOCK BUTTON HERE
         return navigation.navigate('Signup');
       }
       try {
@@ -127,6 +132,7 @@ export default function HomeScreen() {
       } catch (e) {
         console.error("Failed to auto-create chat", e);
         isStreaming.current = false; 
+        setIsLoading(false); // 🛑 UNLOCK BUTTON HERE (Good catch!)
         return;
       }
     }
@@ -139,13 +145,12 @@ export default function HomeScreen() {
     setShowAttachMenu(false); 
     
     const aiMessageId = (Date.now() + 1).toString();
-    const tempAiMsg = { id: aiMessageId, text: "", isAi: true }; // This triggers the "Thinking..." UI
+    const tempAiMsg = { id: aiMessageId, text: "", isAi: true }; 
 
     setMessages(prevMessages => [...prevMessages, newUserMsg, tempAiMsg]);
 
-    // 🌟 NEW: THE 15-SECOND STOPWATCH
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15,000 milliseconds = 15 seconds
+    const timeoutId = setTimeout(() => controller.abort(), 15000); 
 
     // --- 3. FETCH STREAM ---
     try {
@@ -153,10 +158,9 @@ export default function HomeScreen() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: userText, chatId: currentChatId, history: historyToSend }),
-        signal: controller.signal // 🌟 Tell the fetch to listen to our stopwatch
+        signal: controller.signal 
       });
 
-      // Clear the stopwatch if the server responds successfully before 15 seconds!
       clearTimeout(timeoutId);
 
       if (!response.body) throw new Error("No response body");
@@ -187,11 +191,9 @@ export default function HomeScreen() {
         }
       }
     } catch (error) {
-      // Clear the stopwatch just in case it was a different error
       clearTimeout(timeoutId);
       console.error("Streaming error:", error);
       
-      // Determine if it failed because of our 15-second timeout or a generic network error
       const isTimeout = error.name === 'AbortError';
 
       Toast.show({ 
@@ -200,23 +202,22 @@ export default function HomeScreen() {
         text2: isTimeout ? 'Server Timeout (15s limit reached)' : 'AURA is experiencing high traffic.' 
       });
 
-      // Update the "Thinking..." bubble with the error message so it stops spinning
       setMessages(prevMessages => {
         const updatedMessages = [...prevMessages];
         const lastMsgIndex = updatedMessages.length - 1;
         
         if (lastMsgIndex >= 0 && updatedMessages[lastMsgIndex]) {
-           // 🌟 YOUR CUSTOM MESSAGE:
            updatedMessages[lastMsgIndex].text = "The server is busy or getting high traffic. Many users are sending messages, please try again after some time.";
         }
         return updatedMessages;
       });
     } finally {
+      // 🌟 UNLOCK THE BUTTON WHEN DONE OR AFTER ERROR
       isStreaming.current = false;
+      setIsLoading(false);
     }
   };
 
-  
   const handleKeyPress = (e) => {
     if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
       e.preventDefault(); 
@@ -282,7 +283,6 @@ export default function HomeScreen() {
           
           {showAttachMenu && (
             <View style={styles.attachMenu}>
-              {/* 🌟 NEW: Cleaned up UI with Blue/Purple Theme and Coming Soon Alerts */}
               <TouchableOpacity 
                 style={styles.menuItem} 
                 onPress={() => { setShowAttachMenu(false); Toast.show({ type: 'info', text1: 'Adding files coming soon!' }); }}
@@ -319,21 +319,19 @@ export default function HomeScreen() {
             />
             
             <TouchableOpacity 
-  style={[
-    styles.sendButton, 
-    { backgroundColor: (inputText.trim() && !isLoading) ? '#9ba8ff' : '#262626' }
-  ]} 
-  onPress={handleSend}
-  // 🛑 CRITICAL: Disables button if input is empty OR if AI is currently loading/typing
-  disabled={!inputText.trim() || isLoading}
->
-  <MaterialIcons 
-    name="arrow-upward" 
-    size={20} 
-    // Changes icon color to gray while loading
-    color={(inputText.trim() && !isLoading) ? '#000' : '#757575'} 
-  />
-</TouchableOpacity>
+              style={[
+                styles.sendButton, 
+                { backgroundColor: (inputText.trim() && !isLoading) ? '#9ba8ff' : '#262626' }
+              ]} 
+              onPress={handleSend}
+              disabled={!inputText.trim() || isLoading}
+            >
+              <MaterialIcons 
+                name="arrow-upward" 
+                size={20} 
+                color={(inputText.trim() && !isLoading) ? '#000' : '#757575'} 
+              />
+            </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -359,10 +357,9 @@ const styles = StyleSheet.create({
   chatArea: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
   inputWrapper: { paddingBottom: Platform.OS === 'ios' ? 0 : 16 },
   
-  // 🌟 NEW: Deep Purple/Blue themed attachment menu
   attachMenu: { 
     position: 'absolute', bottom: 70, left: 20, 
-    backgroundColor: '#13131c', // Deep dark blue/purple
+    backgroundColor: '#13131c', 
     borderRadius: 16, padding: 8, 
     zIndex: 10, width: 220,
     borderWidth: 1, borderColor: 'rgba(155, 168, 255, 0.25)',
