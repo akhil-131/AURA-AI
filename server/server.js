@@ -27,5 +27,9 @@ async function checkConnection() {
         console.error("❌ Database Connection Failed:", err.message);
     }
 }
+// 🛑 THIS WILL CATCH WHO IS KILLING THE SERVER
+process.on('exit', (code) => {
+    console.log(`\n🕵️ ALERT: The server was forced to shut down with code: ${code}`);
+});
 
 checkConnection();

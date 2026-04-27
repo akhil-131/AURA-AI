@@ -69,14 +69,23 @@ exports.pinChat = async (req, res) => {
 exports.streamChat = async (req, res) => {
     const { prompt, chatId, history, attachment } = req.body;
 
-    // Loop through our keys if one hits a rate limit
+    console.log("\n========================================");
+    console.log(`📩 NEW MESSAGE RECEIVED: "${prompt}"`);
+    console.log(`🔑 Available API Keys in Memory: ${textKeys.length}`);
+    console.log("========================================");
+
+    // 🛑 If .env is broken, it will stop here
+    if (textKeys.length === 0) {
+        console.log("❌ CRITICAL ERROR: 0 API keys found! Check your .env file.");
+        return res.status(500).json({ error: "AURA text servers are busy." });
+    }
+
     for (let attempt = 1; attempt <= textKeys.length; attempt++) {
         try {
-            const genAI = new GoogleGenerativeAI(getNextTextKey());
+            console.log(`🚀 [Attempt ${attempt}/${textKeys.length}] Calling Gemini API...`);
             
-            // 🌟 FIXED: Switched to the universally supported 1.5-flash model
-            // 🌟 The official free-tier model for 2026
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            const genAI = new GoogleGenerativeAI(getNextTextKey());
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // Safest model
 
             if (!res.headersSent) {
                 res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -102,41 +111,49 @@ exports.streamChat = async (req, res) => {
                 });
             }
 
-            // Send the prompt AND the file to Gemini
+            console.log("⏳ Waiting for Google to respond...");
             const result = await chat.sendMessageStream(chatParts);
+            
             let fullAiResponse = "";
-
             for await (const chunk of result.stream) {
                 const chunkText = chunk.text();
                 fullAiResponse += chunkText;
                 res.write(chunkText);
             }
 
+            console.log("✅ Message streamed successfully!");
             res.end();
 
-            // Create a clean DB prompt so we don't save massive Base64 strings to Neon DB
             let dbUserMessage = prompt;
-            if (attachment) {
-                dbUserMessage = `📎 [${attachment.name}]\n\n${prompt}`;
-            }
+            if (attachment) dbUserMessage = `📎 [${attachment.name}]\n\n${prompt}`;
 
             if (chatId) {
                 await sql`INSERT INTO messages (chat_id, role, content) VALUES (${chatId}, 'user', ${dbUserMessage})`;
                 await sql`INSERT INTO messages (chat_id, role, content) VALUES (${chatId}, 'assistant', ${fullAiResponse})`;
                 await sql`UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = ${chatId}`;
+                console.log("💾 Saved to Neon Database.");
             }
             return; 
 
         } catch (error) {
-            console.error(`Text Attempt ${attempt} Failed:`, error.message);
+            console.log(`\n💥 [CRASH ON ATTEMPT ${attempt}]`);
+            console.log(`➡️ Status Code: ${error.status || 'UNKNOWN'}`);
+            console.log(`➡️ Error Detail: ${error.message || 'No detailed message provided by Google'}`);
             
-            // If it's a rate limit (429) or Service Unavailable (503), the loop continues to the next key
-            if (error.status === 503 || error.status === 429) continue;
+            if (error.status === 503 || error.status === 429) {
+                console.log("⚠️ Rate limited. Moving to next API key...");
+                continue; 
+            }
             
-            // For other errors, stop and tell the user
+            console.log("🛑 Hard error encountered. Stopping everything.");
             if (!res.headersSent) res.status(500).json({ error: "AURA text servers are busy." });
             res.end();
             return;
         }
     }
+
+    // 🛑 If the loop finishes and all 3 keys hit a rate limit
+    console.log("\n❌ ALL 3 API KEYS EXHAUSTED.");
+    if (!res.headersSent) res.status(500).json({ error: "AURA text servers are busy." });
+    res.end();
 };
