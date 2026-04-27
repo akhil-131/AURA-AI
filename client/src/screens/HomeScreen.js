@@ -319,12 +319,21 @@ export default function HomeScreen() {
             />
             
             <TouchableOpacity 
-              style={[styles.sendButton, { backgroundColor: inputText.trim() ? '#9ba8ff' : '#262626' }]} 
-              onPress={handleSend}
-              disabled={!inputText.trim()}
-            >
-              <MaterialIcons name="arrow-upward" size={20} color={inputText.trim() ? '#000' : '#757575'} />
-            </TouchableOpacity>
+  style={[
+    styles.sendButton, 
+    { backgroundColor: (inputText.trim() && !isLoading) ? '#9ba8ff' : '#262626' }
+  ]} 
+  onPress={handleSend}
+  // 🛑 CRITICAL: Disables button if input is empty OR if AI is currently loading/typing
+  disabled={!inputText.trim() || isLoading}
+>
+  <MaterialIcons 
+    name="arrow-upward" 
+    size={20} 
+    // Changes icon color to gray while loading
+    color={(inputText.trim() && !isLoading) ? '#000' : '#757575'} 
+  />
+</TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>

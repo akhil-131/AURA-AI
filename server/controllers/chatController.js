@@ -138,10 +138,14 @@ exports.streamChat = async (req, res) => {
         } catch (error) {
             console.log(`\n💥 [CRASH ON ATTEMPT ${attempt}]`);
             console.log(`➡️ Status Code: ${error.status || 'UNKNOWN'}`);
-            console.log(`➡️ Error Detail: ${error.message || 'No detailed message provided by Google'}`);
+            console.log(`➡️ Error Detail: ${error.message || 'No detail provided'}`);
             
-            if (error.status === 503 || error.status === 429) {
-                console.log("⚠️ Rate limited. Moving to next API key...");
+            // 🛑 NEW: Catch both 503/429 AND the weird "Failed to parse stream" SDK bug
+            const isBusy = error.status === 503 || error.status === 429;
+            const isStreamBug = error.message && error.message.includes("Failed to parse stream");
+
+            if (isBusy || isStreamBug) {
+                console.log("⚠️ Google is overloaded. Moving to next API key...");
                 continue; 
             }
             
