@@ -33,7 +33,11 @@ function DrawerNavigator() {
 
 // 🌟 FIXED DEEP LINKING: Correctly mapped for nested Drawer Navigator
 const linking = {
-  prefixes: ['http://localhost:8081'],
+  // 🌟 Keep localhost for testing, but add your live Vercel URL!
+  prefixes: [
+    'http://localhost:8081', 
+    'https://akhil-aura-ai.vercel.app' // 🛑 REPLACE THIS with your actual Vercel link!
+  ],
   config: {
     screens: {
       Home: { // This is the Drawer

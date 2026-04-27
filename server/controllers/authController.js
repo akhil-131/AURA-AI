@@ -118,7 +118,7 @@ exports.forgotPassword = async (req, res) => {
 
         // 6. Send the Email
         // Note: For now, this points to your frontend URL. We will build the Reset Screen next!
-        const resetLink = `http://localhost:8081/reset-password?token=${resetToken}`;
+        const resetLink = `http://akhil-aura-ai.vercel.app/reset-password?token=${resetToken}`;
 
         const mailOptions = {
             from: process.env.EMAIL_USER,
