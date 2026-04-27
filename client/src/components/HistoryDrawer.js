@@ -21,7 +21,7 @@ export default function HistoryDrawer(props) {
           const localUser = JSON.parse(storedUserStr);
           let activeUser = localUser;
 
-          const userRes = await fetch(`http://127.0.0.1:5000/api/auth/me/${localUser.id}`);
+          const userRes = await fetch(`https://aura-ai-backend-2oy5.onrender.com/api/auth/me/${localUser.id}`);
           if (userRes.ok) {
             const freshUser = await userRes.json();
             activeUser = freshUser; 
@@ -31,7 +31,7 @@ export default function HistoryDrawer(props) {
             setUserData(localUser);
           }
 
-          const chatRes = await fetch(`http://127.0.0.1:5000/api/chat/user/${activeUser.id}`);
+          const chatRes = await fetch(`https://aura-ai-backend-2oy5.onrender.com/api/chat/user/${activeUser.id}`);
           if (chatRes.ok) {
             const dbChats = await chatRes.json();
             const formattedChats = dbChats.map((chat, index) => ({
@@ -70,7 +70,7 @@ export default function HistoryDrawer(props) {
 
   const handleNewChat = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:5000/api/chat/new', {
+      const res = await fetch('https://aura-ai-backend-2oy5.onrender.com/api/chat/new', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: userData.id, title: `Chat ${chatHistory.length + 1}` })
@@ -101,7 +101,7 @@ export default function HistoryDrawer(props) {
     setChatHistory(prev => prev.filter(c => c.id !== chatId));
     setActiveMenuId(null);
     try {
-      await fetch(`http://127.0.0.1:5000/api/chat/${chatId}`, { method: 'DELETE' });
+      await fetch(`https://aura-ai-backend-2oy5.onrender.com/api/chat/${chatId}`, { method: 'DELETE' });
       props.navigation.setParams({ activeChatId: null });
     } catch (err) { console.error("Failed to delete", err); }
   };
@@ -119,7 +119,7 @@ export default function HistoryDrawer(props) {
     setEditingChatId(null);
 
     try {
-      await fetch(`http://127.0.0.1:5000/api/chat/${chatId}`, {
+      await fetch(`https://aura-ai-backend-2oy5.onrender.com/api/chat/${chatId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newTitle })
@@ -135,7 +135,7 @@ export default function HistoryDrawer(props) {
     setActiveMenuId(null);
 
     try {
-      await fetch(`http://127.0.0.1:5000/api/chat/${chatId}/pin`, {
+      await fetch(`https://aura-ai-backend-2oy5.onrender.com/api/chat/${chatId}/pin`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isPinned: newPinStatus })

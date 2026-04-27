@@ -30,7 +30,7 @@ export default function SignupScreen({ navigation }) {
     try {
       // 2. Send the data to the server
       // Note: If using an Android emulator, change localhost to 10.0.2.2
-      const response = await fetch('http://localhost:5000/api/auth/signup', {
+      const response = await fetch('https://aura-ai-backend-2oy5.onrender.com/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

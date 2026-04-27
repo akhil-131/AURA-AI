@@ -58,7 +58,7 @@ export default function ProfileScreen({ navigation }) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/auth/update', {
+      const response = await fetch('https://aura-ai-backend-2oy5.onrender.com/api/auth/update', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -44,7 +44,7 @@ export default function HomeScreen() {
     if (activeChatId && !isStreaming.current) {
       const fetchHistory = async () => {
         try {
-          const res = await fetch(`http://127.0.0.1:5000/api/chat/history/${activeChatId}`);
+          const res = await fetch(`https://aura-ai-backend-2oy5.onrender.com/api/chat/history/${activeChatId}`);
           if (res.ok) {
             const data = await res.json();
             const formattedMessages = data.map(msg => ({
@@ -72,11 +72,11 @@ export default function HomeScreen() {
     }
     
     try {
-      const chatsRes = await fetch(`http://127.0.0.1:5000/api/chat/user/${userData.id}`);
+      const chatsRes = await fetch(`https://aura-ai-backend-2oy5.onrender.com/api/chat/user/${userData.id}`);
       const chats = await chatsRes.json();
       const chatTitle = `Chat ${chats.length + 1}`;
 
-      const res = await fetch('http://127.0.0.1:5000/api/chat/new', {
+      const res = await fetch('https://aura-ai-backend-2oy5.onrender.com/api/chat/new', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: userData.id, title: chatTitle })
@@ -110,11 +110,11 @@ export default function HomeScreen() {
         return navigation.navigate('Signup');
       }
       try {
-        const chatsRes = await fetch(`http://127.0.0.1:5000/api/chat/user/${userData.id}`);
+        const chatsRes = await fetch(`https://aura-ai-backend-2oy5.onrender.com/api/chat/user/${userData.id}`);
         const chats = await chatsRes.json();
         const chatTitle = `Chat ${chats.length + 1}`;
 
-        const res = await fetch('http://127.0.0.1:5000/api/chat/new', {
+        const res = await fetch('https://aura-ai-backend-2oy5.onrender.com/api/chat/new', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: userData.id, title: chatTitle })
@@ -149,7 +149,7 @@ export default function HomeScreen() {
 
     // --- 3. FETCH STREAM ---
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/chat/stream', {
+      const response = await fetch('https://aura-ai-backend-2oy5.onrender.com/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: userText, chatId: currentChatId, history: historyToSend }),
