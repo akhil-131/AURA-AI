@@ -18,8 +18,6 @@ export default function HomeScreen() {
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState([]);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
-  
-  // 🌟 NEW: Loading state to prevent button spam and white screen crashes
   const [isLoading, setIsLoading] = useState(false);
 
   const scrollViewRef = useRef();
@@ -68,10 +66,12 @@ export default function HomeScreen() {
   }, [activeChatId]);
 
   const handleNewChat = async () => {
+    if (isLoading) return;
     if (!userData) {
       Toast.show({ type: 'error', text1: 'Please log in to create a chat.' });
       return navigation.navigate('Signup');
     }
+    setIsLoading(true);
     
     try {
       const chatsRes = await fetch(`https://aura-ai-backend-2oy5.onrender.com/api/chat/user/${userData.id}`);
@@ -85,33 +85,37 @@ export default function HomeScreen() {
       });
       const newChatDb = await res.json();
       
-      navigation.setParams({ activeChatId: newChatDb.id.toString() });
-      setMessages([]);
-      setShowAttachMenu(false);
-      
-      DeviceEventEmitter.emit('chat_updated');
-      Toast.show({ type: 'success', text1: `Created ${newChatDb.title}!` });
+      if (newChatDb && newChatDb.id) {
+        navigation.setParams({ activeChatId: newChatDb.id.toString() });
+        setMessages([]);
+        setShowAttachMenu(false);
+        DeviceEventEmitter.emit('chat_updated');
+        Toast.show({ type: 'success', text1: `Created ${newChatDb.title}!` });
+      }
     } catch (error) {
-      console.error("Failed to create chat from header", error);
+      console.error("Failed to create chat", error);
+    }finally {
+      setIsLoading(false); // 🔓 UNLOCK IT
     }
   };
 
   const handleSend = async () => {
-    if (!inputText.trim()) return; 
+    // 🛑 HARD GUARD: Prevent execution if already loading or text is empty
+    if (isLoading || !inputText.trim()) return; 
 
     const userText = inputText.trim(); 
     let currentChatId = activeChatId;
     
-    // 🌟 Lock the button immediately
-    isStreaming.current = true;
+    // 🔒 LOCK BUTTON
     setIsLoading(true);
+    isStreaming.current = true;
 
     // --- 1. AUTO-CREATE CHAT IF NONE EXISTS ---
     if (!currentChatId) {
       if (!userData) {
         Toast.show({ type: 'error', text1: 'Please Log In to use AURA AI.' });
+        setIsLoading(false);
         isStreaming.current = false; 
-        setIsLoading(false); // 🛑 UNLOCK BUTTON HERE
         return navigation.navigate('Signup');
       }
       try {
@@ -125,14 +129,16 @@ export default function HomeScreen() {
           body: JSON.stringify({ userId: userData.id, title: chatTitle })
         });
         const newChatDb = await res.json();
-        currentChatId = newChatDb.id.toString();
         
+        if (!newChatDb || !newChatDb.id) throw new Error("Chat creation failed");
+        
+        currentChatId = newChatDb.id.toString();
         navigation.setParams({ activeChatId: currentChatId });
         DeviceEventEmitter.emit('chat_updated');
       } catch (e) {
         console.error("Failed to auto-create chat", e);
+        setIsLoading(false);
         isStreaming.current = false; 
-        setIsLoading(false); // 🛑 UNLOCK BUTTON HERE (Good catch!)
         return;
       }
     }
@@ -179,8 +185,7 @@ export default function HomeScreen() {
           setMessages(prevMessages => {
             const updatedMessages = [...prevMessages];
             const lastMsgIndex = updatedMessages.length - 1;
-
-            if (lastMsgIndex < 0 || !updatedMessages[lastMsgIndex]) return prevMessages;
+            if (lastMsgIndex < 0) return prevMessages;
 
             updatedMessages[lastMsgIndex] = {
               ...updatedMessages[lastMsgIndex],
@@ -195,7 +200,6 @@ export default function HomeScreen() {
       console.error("Streaming error:", error);
       
       const isTimeout = error.name === 'AbortError';
-
       Toast.show({ 
         type: 'error', 
         text1: 'Network at Capacity 🚦',
@@ -205,14 +209,13 @@ export default function HomeScreen() {
       setMessages(prevMessages => {
         const updatedMessages = [...prevMessages];
         const lastMsgIndex = updatedMessages.length - 1;
-        
-        if (lastMsgIndex >= 0 && updatedMessages[lastMsgIndex]) {
-           updatedMessages[lastMsgIndex].text = "The server is busy or getting high traffic. Many users are sending messages, please try again after some time.";
+        if (lastMsgIndex >= 0) {
+           updatedMessages[lastMsgIndex].text = "The server is busy or getting high traffic. Please try again in a moment.";
         }
         return updatedMessages;
       });
     } finally {
-      // 🌟 UNLOCK THE BUTTON WHEN DONE OR AFTER ERROR
+      // 🔓 UNLOCK EVERYTHING
       isStreaming.current = false;
       setIsLoading(false);
     }
@@ -227,6 +230,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header Section */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.openDrawer()} style={styles.iconButton}>
           <MaterialIcons name="menu" size={28} color="#9ba8ff" />
@@ -246,6 +250,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {/* Main Content */}
       <View style={styles.canvasArea}>
         {messages.length === 0 ? (
           <View style={styles.voidArea}>
@@ -278,25 +283,18 @@ export default function HomeScreen() {
         )}
       </View>
 
+      {/* Input Section */}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.inputWrapper}>
           
           {showAttachMenu && (
             <View style={styles.attachMenu}>
-              <TouchableOpacity 
-                style={styles.menuItem} 
-                onPress={() => { setShowAttachMenu(false); Toast.show({ type: 'info', text1: 'Adding files coming soon!' }); }}
-              >
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setShowAttachMenu(false); Toast.show({ type: 'info', text1: 'Adding files coming soon!' }); }}>
                 <MaterialIcons name="attach-file" size={20} color="#9ba8ff" />
                 <Text style={styles.menuText}>Add photos & files</Text>
               </TouchableOpacity>
-              
               <View style={styles.menuDivider} />
-              
-              <TouchableOpacity 
-                style={styles.menuItem} 
-                onPress={() => { setShowAttachMenu(false); Toast.show({ type: 'info', text1: 'Image Generation coming soon!' }); }}
-              >
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setShowAttachMenu(false); Toast.show({ type: 'info', text1: 'Image Generation coming soon!' }); }}>
                 <MaterialIcons name="image" size={20} color="#9ba8ff" />
                 <Text style={styles.menuText}>Create image</Text>
               </TouchableOpacity>
@@ -356,21 +354,17 @@ const styles = StyleSheet.create({
   loginPromptText: { color: '#9ba8ff', fontSize: 16, fontWeight: 'bold' },
   chatArea: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
   inputWrapper: { paddingBottom: Platform.OS === 'ios' ? 0 : 16 },
-  
   attachMenu: { 
     position: 'absolute', bottom: 70, left: 20, 
-    backgroundColor: '#13131c', 
-    borderRadius: 16, padding: 8, 
-    zIndex: 10, width: 220,
-    borderWidth: 1, borderColor: 'rgba(155, 168, 255, 0.25)',
+    backgroundColor: '#13131c', borderRadius: 16, padding: 8, 
+    zIndex: 10, width: 220, borderWidth: 1, borderColor: 'rgba(155, 168, 255, 0.25)',
     shadowColor: '#9ba8ff', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12
   },
   menuItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 8 },
   menuText: { color: '#e0e0ff', marginLeft: 16, fontSize: 15, fontWeight: '600' },
   menuDivider: { height: 1, backgroundColor: 'rgba(155, 168, 255, 0.15)', marginVertical: 4, marginHorizontal: 12 },
-  
   inputContainer: { flexDirection: 'row', alignItems: 'flex-end', backgroundColor: 'transparent', marginHorizontal: 16, borderRadius: 24, paddingHorizontal: 8, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(155, 168, 255, 0.4)' },
   attachButton: { padding: 8, marginBottom: 2 },
-  textInput: { flex: 1, color: '#ffffff', fontSize: 16, maxHeight: 120, paddingHorizontal: 8, paddingTop: 12, paddingBottom: 12, outlineStyle: 'none' },
+  textInput: { flex: 1, color: '#ffffff', fontSize: 16, maxHeight: 120, paddingHorizontal: 8, paddingTop: 12, paddingBottom: 12 },
   sendButton: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 4, marginLeft: 8 },
 });
