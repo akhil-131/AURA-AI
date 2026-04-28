@@ -141,7 +141,7 @@ exports.streamChat = async (req, res) => {
             console.log(`➡️ Error Detail: ${error.message || 'No detail provided'}`);
             
             // 🛑 NEW: Catch both 503/429 AND the weird "Failed to parse stream" SDK bug
-            const isBusy = error.status === 503 || error.status === 429;
+            const isBusy = error.status === 503 || error.status === 429 || error.status === 401 || error.status === 403;
             const isStreamBug = error.message && error.message.includes("Failed to parse stream");
 
             if (isBusy || isStreamBug) {
