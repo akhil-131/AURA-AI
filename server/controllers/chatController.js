@@ -85,7 +85,7 @@ exports.streamChat = async (req, res) => {
             console.log(`🚀 [Attempt ${attempt}/${textKeys.length}] Calling Gemini API...`);
             
             const genAI = new GoogleGenerativeAI(getNextTextKey());
-            const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+            const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
 
             if (!res.headersSent) {
                 res.setHeader('Content-Type', 'text/plain; charset=utf-8');
